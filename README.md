@@ -26,7 +26,19 @@ The faults are mapped on a byte-per-DQ basis, following the design principles fo
 - the reliability of any 2 byte errors (all were corrected)
 - the detection of whole-chip errors (about 1% are silent fails, likely under 0.05 FIT)
 - the detection of multi-chip corruptions such as RowHammer might cause (also 1% silent)
-- the quixotic exploration of what happens if you try erasure mapping to every chip to see if only one gets corrected (nope, RS will hallucinate bad corrections wherever you tell it to)
+- bounded ECC can be boosted to perfect chip-kill if you know which chip is failing.  But if you specify the wrong chip, it will always generate an illusion.
 - a check of the RS(40,32) 10-chip mode detecting the worst case random multichip faults - it is flawless at detecting them.
 
-In summary, bounded fault correction is not perfect, but it is a serious choice.  If you can recover from a detected fault - and most mission critical software can - then the residual risk of 0.05 silent failure is probably far lower than the silent failure mode in many other parts of the computer.  Those other fault sources are more serious and the money could be better directed.  See https://semiengineering.com/why-silent-data-errors-are-so-hard-to-find/ by Meixner for an introduction to the wider set of faults in real servers.  Arguably, the money and power spent on a 10th chip for "chipkill" support will be hard to assign value in most systems.
+Can we find the chip at fault for a guided bounded fault chipkill?  In principle this is possible wehn the fault is a hard fault, using variations upon the following sequence:
+- use bounded fault ECC.  If it cannot correct, 99% of the time it detects.
+- capture and hold the uncorrected data from DDR5
+- write back the complement of the capture
+- activate any other row in the same bank, so that the data is retained only in the cells
+- read back and compare raw input to the complement that was written
+- correct with erasure code, and write back the corrected data
+
+If the fault is hard then it should fail on the complement of the bits which are stuck, and those should all fall within one chip.  Using that a set of 4 erasure positions can be specified.
+
+This approach is messy.  The memory channel needs careful microcode and detection of colliding requests, plus it is a serious bubble in the pipeline.  But if most unbounded faults are hard faults, it will be a significant improvement in data recovery. It would need to be coupled with remapping functionality to move the data somewhere safer and stop using the broken rows.
+
+In summary, bounded fault correction is not perfect, but it is a serious choice.  If you can recover from a detected fault - and most mission critical software can - then the residual risk of 0.05 silent failure is probably far lower than the silent failure mode in many other parts of the computer.  Those other fault sources are more serious and the money (currently, about $200 per TB for that 10th chip)could be better directed.  See https://semiengineering.com/why-silent-data-errors-are-so-hard-to-find/ by Meixner for an introduction to the wider set of faults in real servers.  Arguably, the money and power spent on a 10th chip for "chipkill" support will be hard to assign value in most systems.
