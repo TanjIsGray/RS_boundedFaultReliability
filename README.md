@@ -25,9 +25,12 @@ The RS(36,32) may not be what every vendor uses, but it is a full strength algor
 The faults are mapped on a byte-per-DQ basis, following the design principles for DDR5 chips which support the JEDEC bounded fault proposal.  Fault models explore:
 - the reliability of any 2 byte errors (all were corrected)
 - the detection of whole-chip errors (about 1% are silent fails, likely under 0.05 FIT)
+- in a 64-byte cache load the ECC runs twice, so silence will be just 0.01%, effectively zero FIT.
 - the detection of multi-chip corruptions such as RowHammer might cause (also 1% silent)
 - bounded ECC can be boosted to perfect chip-kill if you know which chip is failing.  But if you specify the wrong chip, it will always generate an illusion.
 - a check of the RS(40,32) 10-chip mode detecting the worst case random multichip faults - it is flawless at detecting them.
+
+Any device serious about reliability and security should be encrypting memory, so there is no way for a RowHammer or similar attack to control which bits are disturbed.  Any change in value will result in roughly 50% of all bits in all 64 bytes being disturbed.  Thus, both lower and upper 256-bit transfers will be likely to trigger detection.
 
 Can we find the chip at fault for a guided bounded fault chipkill?  In principle this is possible wehn the fault is a hard fault, using variations upon the following sequence:
 - use bounded fault ECC.  If it cannot correct, 99% of the time it detects.
@@ -41,4 +44,4 @@ If the fault is hard then it should fail on the complement of the bits which are
 
 This approach is messy.  But most importantly, the data in Beigi et al suggests that hard faults are rarely dominant, that many faults even of multiple bits appear to be transient or temporary.  This limits the appeal of this method, fun though it may be.  It is better to keep bounded fault correction simple and within its own bounds.
 
-Bounded fault correction is not perfect, but it is a serious choice.  If you can recover from a detected fault - and most mission critical software can - then the residual risk of 0.05 silent failure is probably far lower than the silent failure mode in many other parts of the computer.  Those other fault sources are more serious and the money (currently, about $200 per TB for that 10th chip)could be better directed.  See https://semiengineering.com/why-silent-data-errors-are-so-hard-to-find/ by Meixner for an introduction to the wider set of faults in real servers.  Arguably, the money and power spent on a 10th chip for "chipkill" support will be hard to assign value in most systems.
+Bounded fault correction is not perfect, but it is a serious choice.  If you can recover from a detected fault - and most mission critical software can - then the residual risk of silent failure is effectively zero.  There are other sources of error, both detected and silent, in other parts of the computer.  Those other fault sources are more serious and the money (currently, about $200 per TB for that 10th chip)could be better directed.  See https://semiengineering.com/why-silent-data-errors-are-so-hard-to-find/ by Meixner for an introduction to the wider set of faults in real servers.  Arguably, the money and power spent on a 10th chip for "chipkill" support will be hard to assign value in most systems.
